@@ -4,30 +4,39 @@ use strict;
 use warnings;
 use utf8;
 use Text::CSV_XS;
+use Spreadsheet::ParseXLSX;
 use Encode;
 
-my $csv = Text::CSV_XS->new();
-
-my $lon0 = 0;
 my $lat0 = 0;
+my $lon0 = 0;
 
-my $file = shift;
-if ( ! $file ){
+my $fname = shift;
+if ( ! $fname ){
 print <<EOS;
-Convert AP map data in CSV (UTF-8) to eduroam JP-style CSV  ver.20250804
-Usage: $0 <CSV file> > outfile.csv
+Convert AP map data in CSV (UTF-8) or Excel (.xlsx) to eduroam JP-style CSV
+  ver.20250808
+Usage: $0 <.csv/.xlsx file> > outfile.csv
 EOS
 	exit(1);
 }
-if ( $file !~ /\.csv/i ){
-	print "Not a CSV file.\n";
+my $filetype = '';
+if ( $fname =~ /\.csv$/i ){
+	$filetype = 'csv';
+} elsif ( $fname =~ /\.xlsx$/i ){
+	$filetype = 'xlsx';
+} else {
+	print "Not a CSV or Excel file.\n";
 	exit(1);
 }
 
 # UTF-8 BOM 
 print "\xEF\xBB\xBF";
 
-open(my $fh, '<:encoding(utf8)', $file) or die ("Error: $!\n");
+if ( $filetype eq 'csv' ){
+
+my $csv = Text::CSV_XS->new();
+
+open(my $fh, '<:encoding(utf8)', $fname) or die ("Error: $!\n");
 my %c;
 my $linenum = 0;
 while (my $l = <$fh>) {
@@ -39,7 +48,7 @@ while (my $l = <$fh>) {
 	my $visibility = $m[0];
 	my $status = $m[1];
 	if ( $visibility eq 'visibility' ){
-# version 20250804:
+# template version 20250804:
 # visibility status reg_date remove_date svc_name op_short loc_name
 # loc_name_en latitude longitude floor zip CA1 CA3 CA4 CA6
 # CA1en CA3en CA4en CA6en venue_url num_ap ssid_list bssid_list area_code
@@ -68,6 +77,90 @@ while (my $l = <$fh>) {
 	next if ( $lon == $lon0 && $lat == $lat0 );
 	$lat0 = $lat;
 	$lon0 = $lon;
+
+	print_pm(\@m, \%c);
+}
+
+close($fh);
+
+} elsif ( $filetype eq 'xlsx' ){
+
+my $parser = Spreadsheet::ParseXLSX->new;
+my $workbook = $parser->parse($fname);
+if ( !defined $workbook ) {
+	die $parser->error(), ".\n";
+}
+
+for my $worksheet ( $workbook->worksheets() ) {
+	my $wsname = $worksheet->get_name();
+	next if ( $wsname !~ /^APdata/ );
+ 
+	my ( $row_min, $row_max ) = $worksheet->row_range();
+	my ( $col_min, $col_max ) = $worksheet->col_range();
+	next if ( $col_min != 0 );
+ 
+	my %c;
+	for my $row ( $row_min .. $row_max ) {
+		my $cell = $worksheet->get_cell( $row, 0 );
+		next if ( ! defined $cell );
+		my $visibility = $cell->unformatted();
+		$cell = $worksheet->get_cell( $row, 1 );
+		next if ( ! defined $cell );
+		my $status = $cell->unformatted();
+
+		if ( $visibility eq 'visibility' ){
+			my $i = 0;
+			for my $col ( $col_min .. $col_max ) {
+				$cell = $worksheet->get_cell( $row, $i );
+				$c{ $cell->unformatted() } = $i++;
+			}
+			next;
+		}
+
+		next if ( $visibility ne '公開' && $visibility ne 'open' );
+		next if ( $status ne '本格運用' && $visibility ne 'production' );
+
+		my @m;
+		for my $col ( $col_min .. $col_max ) {
+			$cell = $worksheet->get_cell( $row, $col );
+			if ( defined $cell ){
+#				push(@m, $cell->unformatted());
+				push(@m, $cell->value());
+			} else {
+				push(@m, '');
+			}
+		}
+
+		my $loc_name = $m[ $c{'loc_name_en'} ];
+		if ( $m[ $c{'loc_name'} ] ){ $loc_name = $m[ $c{'loc_name'} ]; }
+
+		my $lat = $m[ $c{'latitude'} ];
+		my $lon = $m[ $c{'longitude'} ];
+
+		# coordinate check for Japan
+		if ( $lat > 46 || $lon < 122 ){
+			print STDERR "Wrong coordinate at $row: $lon, $lat\n";
+			next;
+		}
+
+		next if ( $lon == $lon0 && $lat == $lat0 );
+		$lat0 = $lat;
+		$lon0 = $lon;
+
+		print_pm(\@m, \%c);
+
+	}
+}
+
+}
+
+exit(0);
+
+
+sub print_pm {
+	my ($m_ref, $c_ref) = @_;
+	my @m = @$m_ref;
+	my %c = %$c_ref;
 
 	my $svc_name = $m[ $c{'op_short'} ];
 	if ( $m[ $c{'svc_name'} ] ){
@@ -99,5 +192,4 @@ EOS
 	print encode('utf8', $pm);
 }
 
-close($fh);
 
