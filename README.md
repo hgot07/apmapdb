@@ -5,7 +5,6 @@
 eduroam JP申請システム向けに基地局マップデータを作成するための、
 支援ツールです。
 
-(リリース予定)  
 `apmap-kml.pl` は、Cityroam仕様の基地局管理シートを元に、
 Google mapsのKMLファイルを作成するための、支援ツールです。
 KMLファイルのPlacemarkブロックのみ出力します。

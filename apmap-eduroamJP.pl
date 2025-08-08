@@ -7,16 +7,25 @@ use Text::CSV_XS;
 use Spreadsheet::ParseXLSX;
 use Encode;
 
-my $lat0 = 0;
-my $lon0 = 0;
+my $outform = '';
+if ( $0 =~ /apmap-eduroamJP/ ){
+	$outform = 'eduroamJP';
+} elsif ( $0 =~ /apmap-kml/ ){
+	$outform = 'kml';
+} else {
+	print "Wrong command name.\n";
+	exit(1);
+}
 
 my $fname = shift;
 if ( ! $fname ){
-print <<EOS;
-Convert AP map data in CSV (UTF-8) or Excel (.xlsx) to eduroam JP-style CSV
-  ver.20250808
-Usage: $0 <.csv/.xlsx file> > outfile.csv
-EOS
+	if ( $outform eq 'eduroamJP' ){
+		print "Convert AP map data in CSV (UTF-8) or Excel (.xlsx) to eduroam JP-style CSV\n  ver.20250809\n";
+		print "Usage: $0 <.csv/.xlsx file> > outfile.csv\n";
+	} else {
+		print "Convert AP map data in CSV (UTF-8) or Excel (.xlsx) to KML (Placemark only)\n  ver.20250809\n";
+		print "Usage: $0 <.csv/.xlsx file> > outfile.kml\n";
+	}
 	exit(1);
 }
 my $filetype = '';
@@ -29,8 +38,14 @@ if ( $fname =~ /\.csv$/i ){
 	exit(1);
 }
 
-# UTF-8 BOM 
-print "\xEF\xBB\xBF";
+# UTF-8 BOM for CSV file
+if ( $outform eq 'eduroamJP' ){
+	print "\xEF\xBB\xBF";
+}
+
+my $lat0 = 0;
+my $lon0 = 0;
+
 
 if ( $filetype eq 'csv' ){
 
@@ -78,7 +93,11 @@ while (my $l = <$fh>) {
 	$lat0 = $lat;
 	$lon0 = $lon;
 
-	print_pm(\@m, \%c);
+	if ( $outform eq 'eduroamJP' ){
+		print_pm_eduroamJP(\@m, \%c);
+	} else {
+		print_pm_kml(\@m, \%c);
+	}
 }
 
 close($fh);
@@ -147,7 +166,11 @@ for my $worksheet ( $workbook->worksheets() ) {
 		$lat0 = $lat;
 		$lon0 = $lon;
 
-		print_pm(\@m, \%c);
+		if ( $outform eq 'eduroamJP' ){
+			print_pm_eduroamJP(\@m, \%c);
+		} else {
+			print_pm_kml(\@m, \%c);
+		}
 
 	}
 }
@@ -157,7 +180,7 @@ for my $worksheet ( $workbook->worksheets() ) {
 exit(0);
 
 
-sub print_pm {
+sub print_pm_eduroamJP {
 	my ($m_ref, $c_ref) = @_;
 	my @m = @$m_ref;
 	my %c = %$c_ref;
@@ -187,6 +210,40 @@ my $pm = <<EOS;
 基地局所在地 町名番地(英語),●,"$ca6",,
 SSID,●,eduroam,,
 ,,,,
+EOS
+
+	print encode('utf8', $pm);
+}
+
+
+sub print_pm_kml {
+	my ($m_ref, $c_ref) = @_;
+	my @m = @$m_ref;
+	my %c = %$c_ref;
+
+	my $loc_name = $m[ $c{'loc_name_en'} ];
+	if ( $m[ $c{'loc_name'} ] ){ $loc_name = $m[ $c{'loc_name'} ]; }
+
+	my $lat = $m[ $c{'latitude'} ];
+	my $lon = $m[ $c{'longitude'} ];
+
+	my $svc_name = $m[ $c{'op_short'} ];
+	if ( $m[ $c{'svc_name'} ] ){
+		$svc_name = $m[ $c{'svc_name'} ];
+		$svc_name .= " ($m[ $c{'op_short'} ])";
+	}
+
+my $pm = <<EOS;
+    <Placemark>
+      <name>$loc_name</name>
+      <description><![CDATA[$svc_name<br>eduroam, Cityroam, OpenRoaming]]></description>
+      <styleUrl>#icon-1899-0288D1</styleUrl>
+      <Point>
+        <coordinates>
+          $lon,$lat,0
+        </coordinates>
+      </Point>
+    </Placemark>
 EOS
 
 	print encode('utf8', $pm);
