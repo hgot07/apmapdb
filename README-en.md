@@ -1,8 +1,8 @@
 # Access Point map database support tools 
 
-The tools should work with CSV files in many languages.
+The tools should work with CSV and Excel (.xlsx) files in many languages.
 
-Main target readers are those who use Japanese.
+Main target readers are eduroam JP and Cityroam members but not limited to.
 
 ## Functions
 `apmap-eduroamJP.pl` is an assistant tool that reads
@@ -30,4 +30,5 @@ We don't accept immediate PRs.
 Please open Issue first when you have a fix or feature request.
 - Security isn't considered so well for the input data.
 Special caution is needed when used in a system such as web service.
+
 
