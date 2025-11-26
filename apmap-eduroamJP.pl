@@ -223,6 +223,10 @@ sub print_pm_kml {
 
 	my $loc_name = $m[ $c{'loc_name_en'} ];
 	if ( $m[ $c{'loc_name'} ] ){ $loc_name = $m[ $c{'loc_name'} ]; }
+	if ( $m[ $c{'loc_name'} ] && $m[ $c{'loc_name_en'} ] ){
+		$loc_name = $m[ $c{'loc_name'} ];
+		$loc_name .= " / ".$m[ $c{'loc_name_en'} ];
+	}
 
 	my $lat = $m[ $c{'latitude'} ];
 	my $lon = $m[ $c{'longitude'} ];
