@@ -7,6 +7,8 @@ use Text::CSV_XS;
 use Spreadsheet::ParseXLSX;
 use Encode;
 
+my $ver = '20251128';
+
 my $outform = '';
 if ( $0 =~ /apmap-eduroamJP/ ){
 	$outform = 'eduroamJP';
@@ -20,10 +22,10 @@ if ( $0 =~ /apmap-eduroamJP/ ){
 my $fname = shift;
 if ( ! $fname ){
 	if ( $outform eq 'eduroamJP' ){
-		print "Convert AP map data in CSV (UTF-8) or Excel (.xlsx) to eduroam JP-style CSV\n  ver.20250809\n";
+		print "Convert AP map data in CSV (UTF-8) or Excel (.xlsx) to eduroam JP-style CSV\n  ver.$ver\n";
 		print "Usage: $0 <.csv/.xlsx file> > outfile.csv\n";
 	} else {
-		print "Convert AP map data in CSV (UTF-8) or Excel (.xlsx) to KML (Placemark only)\n  ver.20250809\n";
+		print "Convert AP map data in CSV (UTF-8) or Excel (.xlsx) to KML (Placemark only)\n  ver.$ver\n";
 		print "Usage: $0 <.csv/.xlsx file> > outfile.kml\n";
 	}
 	exit(1);
@@ -76,9 +78,6 @@ while (my $l = <$fh>) {
 
 	next if ( $visibility ne '公開' && $visibility ne 'open' );
 	next if ( $status ne '本格運用' && $visibility ne 'production' );
-
-	my $loc_name = $m[ $c{'loc_name_en'} ];
-	if ( $m[ $c{'loc_name'} ] ){ $loc_name = $m[ $c{'loc_name'} ]; }
 
 	my $lat = $m[ $c{'latitude'} ];
 	my $lon = $m[ $c{'longitude'} ];
@@ -149,9 +148,6 @@ for my $worksheet ( $workbook->worksheets() ) {
 				push(@m, '');
 			}
 		}
-
-		my $loc_name = $m[ $c{'loc_name_en'} ];
-		if ( $m[ $c{'loc_name'} ] ){ $loc_name = $m[ $c{'loc_name'} ]; }
 
 		my $lat = $m[ $c{'latitude'} ];
 		my $lon = $m[ $c{'longitude'} ];
