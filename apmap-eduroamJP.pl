@@ -7,7 +7,7 @@ use Text::CSV_XS;
 use Spreadsheet::ParseXLSX;
 use Encode;
 
-my $ver = '20251128';
+my $ver = '20251129';
 
 my $outform = '';
 if ( $0 =~ /apmap-eduroamJP/ ){
@@ -51,9 +51,9 @@ my $lon0 = 0;
 
 if ( $filetype eq 'csv' ){
 
-my $csv = Text::CSV_XS->new();
+my $csv = Text::CSV_XS->new({ binary=>1 });
 
-open(my $fh, '<:encoding(utf8)', $fname) or die ("Error: $!\n");
+open(my $fh, '<', $fname) or die ("Error: $!\n");
 my %c;
 my $linenum = 0;
 while (my $l = <$fh>) {
